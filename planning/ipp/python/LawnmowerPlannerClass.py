@@ -98,8 +98,8 @@ class LMPlanner(PlannerTemplateClass.PlannerTemplate):
             print("Lawnmower patternis waiting for odometry before starting.")
             rospy.sleep(2)
             
-        swath_width = 30
-        turning_radius = 15
+        swath_width = 20
+        turning_radius = 10
         
         low_x   = self.bounds[0]
         low_y   = self.bounds[1]
