@@ -35,7 +35,7 @@ import ipp_utils
 class BOPlanner(PlannerTemplateClass.PlannerTemplate):
     """ Planner which uses Bayesian Optimization and MCTS.
         This class will publish an initial path when instanciated,
-        using a deterministic or random path. it will then periodically
+        using a deterministic or random path. It will then periodically
         check the status of waypoints, and when nearing a target, will
         plan a path. When approach is imminent, this path is published.
         The object will save the trained models every time it reaches a target.
@@ -61,13 +61,13 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
         Args:
             corner_topic        (string): publishing topic for corner waypoints
             path_topic          (string): publishing topic for planner waypoints
-            planner_req_topic   (string): _description_
-            odom_topic          (string): _description_
-            bounds        (list[double]): [left bound, right bound, upper bound, lower bound]
+            planner_req_topic   (string): subscriber topic for callbacks to plan new paths
+            odom_topic          (string): subscriber topic for callback to update vehicle odometry
+            bounds        (list[double]): [low_x, low_y, high_x, high_y]
             turning_radius      (double): the radius on which the vehicle can turn on yaw axis
-            training_rate          (int): _description_
+            training_rate          (int): rate at which GP is trained
             wp_resolution       (_type_): _description_
-            swath_width         (_type_): _description_
+            swath_width         (double): Swath width of MBES sensor
             path_nbr_samples    (_type_): _description_
             voxel_size          (_type_): _description_
             wp_sample_interval  (_type_): _description_
@@ -201,6 +201,13 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
     
     def update_wp_cb(self, msg):
         """ When called, reduces number of waypoints tracked.
+        
+            NOTE: Had to be changed to work with real vehicle, so 
+            slightly different than intended. To figure out when this
+            callback is called, see the topic it is subscribed to. To work
+            with a real vehicle, a separate queue is maintained. This is
+            the queue that currently triggers planning, which is used
+            in the 'periodic_call' function.
 
         Args:
             msg (bool): not currently used
@@ -210,7 +217,11 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
             
     def calculate_time2target(self):
         """ Calculates the time to target based on euclidean distance
-            along the path.
+            along the path. 
+            
+            NOTE: The Euclidean path is not a perfect measurement,
+            but it is fast. This was not used in real experiments,
+            as it was found to be unreliable (speed was not as expected).
 
         Returns:
             double: time to arrival at target location
@@ -242,9 +253,24 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
             
     def execute_planning(self, msg):
         """ 
+            This callback essentially runs the entire BO planning loop. To begin with,
+            we freeze a copy of the current GP to use for BO. A myopic BO could potentially
+            get away with using the current GP, but thread safety becomes an issue there as well.
+            
+            A tree search (with *sort of* MC based method) performs BO to find
+            candidates (locations) in this frozen GP. For each candidate, we can then
+            train a new, separate GP where we have simulated MBES measurements as
+            if we actually travelled to that candidate location. The tree expands,
+            and repeat until we run out of time.
+            
+            The location itself is the intensive part to find. After deciding that we are 
+            running out of time, we take our currently best location, and decide the best
+            angle of the connecting Dubins path. The optimal angle is found through
+            secondary BO, with rewards from sampling MBES swaths along the candidate 
+            paths (defined by the already determined location, and candidate angle).
 
         Args:
-            msg (_type_): _description_
+            msg (bool): dummy boolean
         """
         
         if self.distance_travelled < self.max_travel_distance:

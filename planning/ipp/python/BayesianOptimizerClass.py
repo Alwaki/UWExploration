@@ -13,10 +13,18 @@ import numpy as np
 import dubins
 
 # Python functionality      
-import typing   
+import typing  
+
+"""
+
+"""
+
+
+ 
 
 class BayesianOptimizer():
-    """ Defines methods for BO optimization
+    """ Defines methods for BO optimization. The optimizer uses a custom acquisition function
+        for the reward. 
     """
     def __init__(self, current_pose, gp_terrain, wp_resolution, turning_radius,
                  swath_width, path_nbr_samples, voxel_size, wp_sample_interval):
@@ -43,7 +51,7 @@ class BayesianOptimizer():
     
     def _sample_paths(self, nbr_samples, X=None):
         """ Sample the reward of swaths along dubins path with environment GP.
-            Primarily used to generate data train the second layer of GP. 
+            Primarily used to generate data to train the second layer of GP. 
             If not given data, generates random data inside bounds and calculates
             reward. If given data, will calculate the target reward for that data.
 
@@ -156,7 +164,8 @@ class UCB_path(botorch.acquisition.AnalyticAcquisitionFunction):
     def _dubins_swath(self, xy, theta) -> typing.Tuple[torch.Tensor, typing.Optional[torch.Tensor]]:
         """ Computes the dubins path to the candidates. Generates points
             along the line to be used for posterior sampling, and calculates
-            the cost of the path as the length.
+            the cost of the path as the length. Some weighting has been 
+            added to the cost calculation.
 
         Args:
             xy: `batch_shape x q x (d-1)`-dim Tensor of model inputs.

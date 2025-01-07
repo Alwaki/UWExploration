@@ -176,7 +176,10 @@ class PlannerTemplate(object):
         corners.poses.append(dl_c)
         
         # NOTE: Adding an extra wp closes the pattern, 
-        # no need to deform corners then
+        # no need to deform corners then. For anyone reading this,
+        # before adding the extra wp open3d complained when generating 
+        # points in the 2D surface. Before this, another fix was to slightly
+        # deform the corners to not have a perfect rectangle - also worked.
         corners.poses.append(ul_c)
         
         return corners

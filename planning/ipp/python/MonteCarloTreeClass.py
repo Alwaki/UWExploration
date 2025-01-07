@@ -11,22 +11,6 @@ import ipp_utils
 import GaussianProcessClass
 import pickle
 
-""" PLAN FOR IMPLEMENTING MULTIPLE TRAINING GPs
-
-1. When the node object is created, we simulate MBES points and store those
-    - generate_points
-    
-2. We create an action server for the node, which can give these simulated MBES points
-    - action_cb
-    
-3. In the frozen_gp, create a training method that can sample from both the
-simulated as and the real action servers. Split 50/50, remove the gp points when they've been used.
-
-4. Set a while loop that calls the training of the GP until points are exhausted. Until it has finished training,
-do not let the node expand to new children, but instead keep doing rollouts from it (which will iteratively get better).
-
-"""
-
 
 class Node(object):
     
@@ -52,42 +36,6 @@ class Node(object):
         while training_iteration < 50:
             self.gp.train_simulated_and_real_iteration()
             training_iteration += 1
-                    
-        # For debugging, pickle (REMOVE FOR FIELD EXPERIMENTS; pickle causes issues)
-        """
-        if id_nbr < 1:
-            parent_id = "noparent"
-        else:
-            parent_id = self.parent.id
-        with open("node_gp_" + str(parent_id) + "_" + str(self.id) + ".pickle", "wb") as fp:
-            pickle.dump(self.gp.model, fp)
-        """
-
-            
-    
-    
-    """
-    def action_cb(self, goal):
-        
-        result = MinibatchTrainingResult()
-                                
-        if np.shape(self.simulated_points)[0] > goal.mb_size:
-            
-            # Randomly sample minibatch UIs from current dataset       
-            idx = np.random.choice(np.shape(self.simulated_points)[0]-1, goal.mb_size, replace=False)
-            points = self.simulated_points[idx, :]
-            
-            # Pack cloud
-            mbes_pcloud = ipp_utils.pack_cloud(self.map_frame, points)
-            result.minibatch = mbes_pcloud
-            result.success = True
-            self.simulated_mb_as.set_succeeded(result)
-                        
-        else:
-            result.success = False
-            self.simulated_mb_as.set_succeeded(result)
-    """
-    
     
     
 class MonteCarloTree(object):

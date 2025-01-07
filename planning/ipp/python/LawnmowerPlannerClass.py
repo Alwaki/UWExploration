@@ -42,18 +42,18 @@ class LMPlanner(PlannerTemplateClass.PlannerTemplate):
         PlannerBase (obj): Basic template of planner class
     """
     def __init__(self, corner_topic, path_topic, planner_req_topic, odom_topic, 
-                 bounds, turning_radius, training_rate, sw):
+                 bounds, turning_radius, training_rate, swath_width):
         """ Constructor
 
         Args:
-            corner_topic (string): _description_
-            path_topic (string): _description_
-            planner_req_topic (string): _description_
-            odom_topic (string): _description_
-            bounds (list(float)): _description_
-            turning_radius (double): _description_
-            training_rate (int): _description_
-            sw (double): _description_
+            corner_topic        (string): publishing topic for corner waypoints
+            path_topic          (string): publishing topic for planner waypoints
+            planner_req_topic   (string): subscriber topic for callbacks to plan new paths
+            odom_topic          (string): subscriber topic for callback to update vehicle odometry
+            bounds        (list[double]): [low_x, low_y, high_x, high_y]
+            turning_radius      (double): the radius on which the vehicle can turn on yaw axis
+            training_rate          (int): rate at which GP is trained
+            swath_width         (double): Swath width of MBES sensor
         """
         # Invoke constructor of parent class
         super().__init__(corner_topic, path_topic, planner_req_topic, odom_topic, 
@@ -62,52 +62,51 @@ class LMPlanner(PlannerTemplateClass.PlannerTemplate):
         # Publish path, then train GP
         self.path_pub = rospy.Publisher(path_topic, Path, queue_size=100)
         rospy.sleep(1)
-        path = self.generate_path(swath_width=sw)
+        path = self.generate_path(swath_width=swath_width, turning_radius=turning_radius)
         self.path_pub.publish(path) 
         self.begin_gp_train()
             
     def update_wp_cb(self, msg):
-        """ When called, dumps GP
+        """ Callback method, called when no more waypoints left.
+            Since the lawnmower is offline in nature, we do not
+            ever need new waypoints during runtime. Instead, 
+            when called this dumps the current GP for plotting.
 
         Args:
             msg (bool): dummy boolean, not used currently
         """
         
         # Freeze a copy of current model for plotting, to let real model keep training
-        #with self.gp.mutex:
-        #    ipp_utils.save_model(self.gp.model, self.store_path + "_GP_" + str(round(self.distance_travelled)) + "_env_lawnmower.pickle")
-        #    print("Saved model")
+        with self.gp.mutex:
+            ipp_utils.save_model(self.gp.model, self.store_path + "_GP_" + str(round(self.distance_travelled)) + "_env_lawnmower.pickle")
+            print("Saved model")
         
         # Notify of current distance travelled
         print("Current distance travelled: " + str(round(self.distance_travelled)) + " m.")
         
     
-    def generate_path(self, swath_width):
-        """ Creates a basic path in lawnmower pattern in a rectangle with given parameters
+    def generate_path(self, swath_width, turning_radius):
+        """ Creates a basic path in lawnmower pattern in a rectangle with 
+            given parameters. Sets goals with 
+            consideration of vehicle dynamics (turn radius).
 
         Args:
             swath_width     (double): Swath width of MBES sensor
-            max_time        (double): Time the trajectory is allowed to take (seconds)
-            vehicle_speed   (double): speed of vehicle (m/s)
-            
+            turning_radius  (double): Minimum possible radius of vehicle turn  
+                      
         Returns:
             nav_msgs.msg.Path: Waypoint list, in form of poses
         """
         
         while not self.odom_init and not rospy.is_shutdown():
-            print("Lawnmower patternis waiting for odometry before starting.")
+            print("Lawnmower pattern is waiting for odometry before starting.")
             rospy.sleep(2)
-            
-        swath_width = 30
-        turning_radius = 15
         
         low_x   = self.bounds[0]
         low_y   = self.bounds[1]
         high_x  = self.bounds[2]
         high_y  = self.bounds[3]
-        
-        print(self.bounds)
-        
+                
         # Check which corner to start on, based on which is closest
         if abs(self.state[0] - low_x) < abs(self.state[0] - high_x):
             start_x = low_x
