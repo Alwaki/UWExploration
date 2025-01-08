@@ -14,7 +14,12 @@ from botorch.acquisition import UpperConfidenceBound
 
 
 class UpdateDist(object):
-    """ Class that updates frame for real time animation plotting """
+    """ Class that updates frame for real time animation plotting.
+        Runs as a separate node thread, and only if 'Visualize' is
+        set to true in the parameters.
+
+        Note, using multiple candidate acquisition functions
+        broke some of the plots. """
     
     def __init__(self, ax):
         """ Constructor
