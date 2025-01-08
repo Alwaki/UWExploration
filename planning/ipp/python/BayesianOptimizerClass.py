@@ -15,12 +15,6 @@ import dubins
 # Python functionality      
 import typing  
 
-"""
-
-"""
-
-
- 
 
 class BayesianOptimizer():
     """ Defines methods for BO optimization. The optimizer uses a custom acquisition function
@@ -32,13 +26,13 @@ class BayesianOptimizer():
 
         Args:
             gp_terrain (SingleTaskVariationalGP): SVGP that learns environment model from MBES input.
-            current_pose (list[double]):          2D pose from where to start searches for new paths
-            wp_resolution (double):               Resolution for calculating path waypoints
-            turning_radius (double):              Turning radius of vehicle
-            swath_width (float):                  Width of MBES sensor swath
-            path_nbr_samples (int):               Number of orthogonal samples that emulate an MBES swath
-            voxel_size (double):                  Size of grids that to reduce number of overlapping samples
-            wp_sample_interval (int):             Interval of sampling waypoint swaths orthogonally along path
+            current_pose          (list[double]): 2D pose from where to start searches for new paths
+            wp_resolution               (double): Resolution for calculating path waypoints
+            turning_radius              (double): Turning radius of vehicle
+            swath_width                  (float): Width of MBES sensor swath
+            path_nbr_samples               (int): Number of orthogonal samples that emulate an MBES swath
+            voxel_size                  (double): Size of grids used to reduce number of overlapping samples
+            wp_sample_interval             (int): Interval of sampling waypoint swaths orthogonally along path
         """
 
         # Set up bounds, and environment acq_fun
@@ -215,8 +209,8 @@ class UCB_path(botorch.acquisition.AnalyticAcquisitionFunction):
         
 
         Args:
-            poses (list[float]): [x y theta]
-            nbr_samples (int, optional): number of samples generated for each vector. Defaults to 6.
+            poses           (list[float]): [x y theta]
+            nbr_samples   (int, optional): number of samples generated for each vector. Defaults to 6.
             swath_width (float, optional): width of line sampled from, for each vector. Defaults to 5.0.
 
         Returns:

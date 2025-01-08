@@ -66,14 +66,15 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
             bounds        (list[double]): [low_x, low_y, high_x, high_y]
             turning_radius      (double): the radius on which the vehicle can turn on yaw axis
             training_rate          (int): rate at which GP is trained
-            wp_resolution       (_type_): _description_
+            wp_resolution       (double): resolution at which waypoints along path are generated.
             swath_width         (double): Swath width of MBES sensor
-            path_nbr_samples    (_type_): _description_
-            voxel_size          (_type_): _description_
-            wp_sample_interval  (_type_): _description_
-            horizon_distance    (_type_): _description_
-            border_margin       (_type_): _description_
-            beta                (_type_): _description_
+            path_nbr_samples       (int): Number of (orthogonal to path) samples that emulate an MBES swath
+            voxel_size          (double): Size of grids used to reduce number of overlapping samples
+            wp_sample_interval  (double): Interval of sampling waypoint swaths orthogonally along path
+            horizon_distance    (double): distance from current location where candidates are searched for
+            border_margin       (double): distance buffer from border where no candidates are searched for
+            beta                (double): constant used for UCB acquisition function
+            
         """
         # Invoke constructor of parent class
         super().__init__(corner_topic, path_topic, planner_req_topic, odom_topic, bounds, turning_radius, training_rate) 
