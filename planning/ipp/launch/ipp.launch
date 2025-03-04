@@ -63,8 +63,8 @@
     <arg name="bound_right"                     default="158"/>
     <arg name="bound_up"                        default="200"/>
     <arg name="bound_down"                      default="-200"/>
-    <arg name="prior_mean"                      default="0" />
-    <arg name="prior_vari"                      default="0" />
+    <arg name="prior_mean"                      default="-20" />
+    <arg name="prior_vari"                      default="4.0" />
     <arg name="max_travel_distance"             default="3500" />
 
     <!-- If plotting decision support material should be enabled -->
