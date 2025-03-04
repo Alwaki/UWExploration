@@ -35,6 +35,9 @@ class W2WMissionPlanner(object):
 
         # LC waypoints, individually
         rospy.Subscriber(self.wp_topic, PoseStamped, self.wp_cb, queue_size=1)
+        
+        # Publisher for ipp trigger
+        self.pub = rospy.Publisher("/hugin_0/planner_req", Bool)
 
         # The bs driver can be fairly slow on the simulations, so it's necessary
         # to stop the vehicle until the LC area has been selected
@@ -67,6 +70,8 @@ class W2WMissionPlanner(object):
                 self.ac.send_goal(goal)
                 self.ac.wait_for_result()
                 rospy.loginfo("WP reached, moving on to next one")
+                self.pub.publish(True)
+                
 
             elif not self.latest_path.poses:
                 rospy.loginfo_once("Mission finished")
