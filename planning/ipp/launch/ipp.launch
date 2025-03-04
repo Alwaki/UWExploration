@@ -6,7 +6,7 @@
     <arg name="mode"                            default="sim"/>
     <arg name="namespace"                       default="hugin_0"/>
     <arg name="debug"                           default="0"/>
-    <arg name="dataset"                         default="asko"/>
+    <arg name="dataset"                         default="ripples"/>
     <arg name="app"                             default="ipp"/>
 
     <!-- MBES sensor -->
@@ -15,7 +15,7 @@
   
     <!-- Coordinates of odom frame wrt the map frame. By default, the AUV start the mission here -->
     <arg name="x"                               default="158"/>
-    <arg name="y"                               default="-1150"/>
+    <arg name="y"                               default="200"/>
     <arg name="z"                               default="0.0"/>
     <arg name="roll"                            default="0.0"/>
     <arg name="pitch"                           default="0.0"/>
@@ -58,16 +58,16 @@
     <arg name="horizon_distance"                default="100"/>
     <arg name="border_margin"                   default="15"/>
 
-    <!-- Planner constraints MAP 1: 5 Hectare -->
+    <!-- Planner constraints -->
     <arg name="bound_left"                      default="-175"/>
     <arg name="bound_right"                     default="158"/>
-    <arg name="bound_up"                        default="-1150"/>
-    <arg name="bound_down"                      default="-1450"/>
-    <arg name="prior_mean"                      default="-33" />
-    <arg name="prior_vari"                      default="0.125" />
+    <arg name="bound_up"                        default="200"/>
+    <arg name="bound_down"                      default="-200"/>
+    <arg name="prior_mean"                      default="0" />
+    <arg name="prior_vari"                      default="0" />
     <arg name="max_travel_distance"             default="3500" />
 
-    <!-- If plotting decision support material should be enabled-->
+    <!-- If plotting decision support material should be enabled -->
     <arg name="visualize"                       default="0"/>
 
     <!-- Run IPP node -->
