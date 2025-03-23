@@ -11,6 +11,21 @@ Besides those baseline libraries, this package also uses botorch for BO, and the
 pip install botorch dubins 
 ```
 
+## Running
+
+There is an example dataset provided, called "ripples". To run the code, simply use the launch file provided
+
+```
+roslaunch ipp.launch
+```
+
+which will look similarly to this
+
+![alt text](include/BO_demo.gif)
+
+
+(note, 3x speed in the above gif)
+
 ## Code Structure
 The structure of the project follows most other ROS packages. There is a launch file, which is dedicated to running the ROS master, along with any necessary nodes. The nodes in turn run python executables in dedicated threads.
 
