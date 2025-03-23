@@ -36,8 +36,7 @@ class Node(object):
         self.visit_count        = 0
         self.id                 = (depth ** 2) * id_nbr
         self.training           = False
-        self.device             = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.gp                 = gp #.to(self.device)
+        self.gp                 = gp
         self.map_frame          = rospy.get_param("~map_frame")
         self.simulated_points   = np.empty((0,3))
         
@@ -90,6 +89,7 @@ class MonteCarloTree(object):
         # run iteration
         # 1. select a node
         node = self.select_node()
+
         # If node has not been visited, rollout to get reward
         if node.visit_count == 0 and node != self.root:
             value = self.rollout_node(node)
@@ -165,7 +165,7 @@ class MonteCarloTree(object):
             nbr_children (int, optional): How many candidates to return from BO. Defaults to 3.
         """
         
-        #print("expanding, parent at node depth: " + str(node.depth))
+        print("expanding, parent at node depth: " + str(node.depth))
         
         # Tried a few different acqusition functions
         #XY_acqf         = qSimpleRegret(model=node.gp.model)                                # Just pure exploration (but also gets stuck on maxima)
@@ -177,19 +177,21 @@ class MonteCarloTree(object):
         
         bounds_XY_torch = torch.tensor([[local_bounds[0], local_bounds[1]], [local_bounds[2], local_bounds[3]]]).to(torch.float)
         
+        bounds_XY_torch = bounds_XY_torch.to(torch.device('cuda'))
+                
         candidates, _   = optimize_acqf(acq_function=XY_acqf, bounds=bounds_XY_torch, q=nbr_children, num_restarts=5, raw_samples=100)
-        
-        
-        ipp_utils.save_model(node.gp.model, "Parent_gp.pickle")
+                
+        node.gp.save("Parent_gp.pickle")
         t1 = time.time()
         
         for i in range(nbr_children):
             new_gp = GaussianProcessClass.frozen_SVGP()
-            new_gp.model = ipp_utils.load_model(new_gp.model, "Parent_gp.pickle")
+            new_gp.load("Parent_gp.pickle")
             new_gp.real_beams = node.gp.real_beams
             new_gp.simulated_beams = node.gp.simulated_beams
             n = Node(position=list(candidates[i,:].cpu().detach().numpy()), id_nbr=i+1,depth=node.depth + 1, parent=node, gp=new_gp)
             node.children.append(n)
+            
         print("****** TIME TAKEN TO EXPAND NODES: " + str(time.time() - t1) + " ******")
         
     
@@ -209,7 +211,7 @@ class MonteCarloTree(object):
         
         local_bounds = ipp_utils.generate_local_bounds(self.global_bounds, node.position, self.rollout_reward_distance, self.border_margin)
         samples_np = np.random.uniform(low=[local_bounds[0], local_bounds[1]], high=[local_bounds[2], local_bounds[3]], size=[20, 2])
-        samples_torch = (torch.from_numpy(samples_np).type(torch.FloatTensor)).unsqueeze(-2)
+        samples_torch = (torch.from_numpy(samples_np).type(torch.FloatTensor)).to(node.gp.device).unsqueeze(-2)
         
         acq_fun = UpperConfidenceBound(model=node.gp.model, beta=self.beta)
         ucb = acq_fun.forward(samples_torch)
