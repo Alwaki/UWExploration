@@ -332,7 +332,7 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
 
             candidates_theta, angle_gp  = BO.optimize_theta_with_grad(XY=candidates_XY, max_iter=angle_optim_max_iter, nbr_samples=15)
             
-            candidate                   = torch.cat([candidates_XY, candidates_theta], 1).squeeze(0)
+            candidate                   = torch.cat([candidates_XY.to(self.frozen_gp.device), candidates_theta.to(self.frozen_gp.device)], 1).squeeze(0)
             
             with open("angle_gp" + str(self.distance_travelled) + ".pickle", 'wb') as handle:
                 pickle.dump(angle_gp, handle)
@@ -345,7 +345,7 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
             h.frame_id = self.map_frame
             sampling_path = Path()
             sampling_path.header = h
-            location = candidate.numpy()
+            location = candidate.cpu().numpy()
             path = dubins.shortest_path(self.planner_initial_pose, [location[0], location[1], location[2]], self.turning_radius)
             wp_poses, _ = path.sample_many(self.wp_resolution)
             skip = 1

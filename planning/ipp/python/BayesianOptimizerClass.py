@@ -37,11 +37,12 @@ class BayesianOptimizer():
 
         # Set up bounds, and environment acq_fun
         self.current_pose           = current_pose
-        self.bounds_theta_torch     = torch.tensor([[-np.pi],  [np.pi]]).to(torch.float)
+        self.device                 = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.bounds_theta_torch     = torch.tensor([[-np.pi],  [np.pi]]).to(torch.float).to(self.device)
         self.path_reward            = UCB_path(model=gp_terrain, current_pose=current_pose, wp_resolution=wp_resolution,
                                                turning_radius=turning_radius, swath_width=swath_width, path_nbr_samples=path_nbr_samples,
                                                voxel_size=voxel_size, wp_sample_interval=wp_sample_interval)
-
+    
     
     def _sample_paths(self, nbr_samples, X=None):
         """ Sample the reward of swaths along dubins path with environment GP.
@@ -56,13 +57,14 @@ class BayesianOptimizer():
             [nbr_samples x 3], [nbr_samples x 1]: tensors containing train and target data
         """
         
-        # Disable gradients, otherwise fit_gpytorch_mll throws a fit later
+        # Disable gradients for fit_gpytorch_mll in later step
         with torch.no_grad():
             if X is None:
                 train_X = (torch.from_numpy(np.random.uniform(low=self.bounds_list[0], 
-                                    high=self.bounds_list[1], size=[nbr_samples, 3]))).type(torch.FloatTensor)
+                                    high=self.bounds_list[1], size=[nbr_samples, 3]))).type(torch.FloatTensor).to(self.device)
             else:
                 train_X = X
+                
             train_Y = (self.path_reward.forward(train_X.unsqueeze(-2))).unsqueeze(1)
         return train_X, train_Y        
     
@@ -81,7 +83,8 @@ class BayesianOptimizer():
         """
 
         # Generate initial sample angles
-        random_thetas = torch.linspace(self.bounds_theta_torch[0,0].item(), self.bounds_theta_torch[1,0].item(), nbr_samples).unsqueeze(1)
+        XY = XY.to(self.device)
+        random_thetas = torch.linspace(self.bounds_theta_torch[0,0].item(), self.bounds_theta_torch[1,0].item(), nbr_samples).unsqueeze(1).to(self.device)
         XY_repeated = XY.repeat(nbr_samples, 1)
         samples = torch.cat([XY_repeated, random_thetas], 1)
         train_X, train_Y  = self._sample_paths(nbr_samples=nbr_samples, X=samples)
@@ -90,6 +93,7 @@ class BayesianOptimizer():
         # Train a new 1D Gaussian process for rewards of different headings
         self.gp_theta               = botorch.models.SingleTaskGP(train_X, train_Y)
         self.mll                    = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp_theta.likelihood, self.gp_theta)
+        
         botorch.fit.fit_gpytorch_mll(self.mll)
         best_theta_acqf             = botorch.acquisition.PosteriorMean(self.gp_theta)
         _, value                    = botorch.optim.optimize_acqf(best_theta_acqf, bounds=self.bounds_theta_torch, q=1, num_restarts=10, raw_samples=20)
@@ -101,7 +105,7 @@ class BayesianOptimizer():
         while iteration < max_iter:
             candidate, value = botorch.optim.optimize_acqf(self.theta_acqf, bounds=self.bounds_theta_torch, q=1, num_restarts=5, raw_samples=20)
             
-            sample = torch.cat([XY, candidate], 1).squeeze(0)
+            sample = torch.cat([XY, candidate], 1).squeeze(0).to(self.device)
             train_X, train_Y  = self._sample_paths(nbr_samples=1, X=sample)
             train_X = train_X[2].unsqueeze(0)
             
@@ -132,6 +136,7 @@ class UCB_path(botorch.acquisition.AnalyticAcquisitionFunction):
         self.swath_width = swath_width
         self.nbr_samples = path_nbr_samples
         self.voxel_size = voxel_size
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             
     @t_batch_mode_transform(expected_q=1)
     def forward(self, X: torch.Tensor) -> torch.Tensor:
@@ -171,7 +176,7 @@ class UCB_path(botorch.acquisition.AnalyticAcquisitionFunction):
         """
         destinations = (xy.squeeze(-2).squeeze(-1))
         angles = (theta.squeeze(-1))
-        rewards = torch.Tensor()
+        rewards = torch.Tensor().to(self.device)
         
         for idx, place in enumerate(destinations):
             # Calculate dubins path to candidate, and travel cost
@@ -191,7 +196,7 @@ class UCB_path(botorch.acquisition.AnalyticAcquisitionFunction):
             #o3d.visualization.draw_geometries([pcd3])
             xyz = np.asarray(pcd3.points)
 
-            xy = torch.from_numpy(xyz[:, :2]).type(torch.FloatTensor)
+            xy = torch.from_numpy(xyz[:, :2]).type(torch.FloatTensor).to(self.device)
             
             # Calculate UCB/cost reward of travelling to candidate
             _, sigma = self._mean_and_sigma(xy)
