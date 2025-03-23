@@ -92,16 +92,17 @@ class frozen_SVGP():
         self.verbose = rospy.get_param("~svgp_verbose")
         assert isinstance(self.num_inducing, int)
         self.s = int(self.num_inducing)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        var_dist = gpytorch.variational.CholeskyVariationalDistribution(self.s)
         self.model = botorch.models.SingleTaskVariationalGP(
                 train_X=torch.randn(self.s,2),
                 num_outputs=1,
                 inducing_points = torch.randn(self.s,2),
-                variational_distribution=gpytorch.variational.CholeskyVariationalDistribution(self.s),
+                variational_distribution=var_dist,
                 likelihood=GaussianLikelihood(),
                 learn_inducing_points=True,
                 mean_module = ConstantMean(constant_prior=NormalPrior(self.prior_mean, self.prior_vari)),
                 covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5)))
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.likelihood = GaussianLikelihood()
         self.mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.model.model, self.mb_size, combine_terms=True)
         self.likelihood.to(self.device).float()
@@ -133,6 +134,21 @@ class frozen_SVGP():
         del input
         del target
 
+    def save(self, fname):
+        torch.save({'model' : self.model.state_dict(),
+                    'likelihood' : self.likelihood.state_dict(),
+                    'mll' : self.mll.state_dict(),
+                    'opt': self.opt.state_dict()}, fname)
+
+    def load(self, fname):
+        cp = torch.load(fname)
+        self.model.load_state_dict(cp['model'])
+        self.likelihood.load_state_dict(cp['likelihood'])
+        self.mll.load_state_dict(cp['mll'])
+        self.opt.load_state_dict(cp['opt'])
+        
+        self.model.train()
+        self.likelihood.train() 
                          
 class SVGP_map():
     """ Class which encapsulates the optimization tools for the SVGP map.
@@ -211,6 +227,7 @@ class SVGP_map():
 
         # hardware allocation
         initial_x = torch.randn(self.s,2)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         var_dist = gpytorch.variational.CholeskyVariationalDistribution(self.s)
         self.model = botorch.models.SingleTaskVariationalGP(
             train_X=initial_x,
@@ -221,8 +238,6 @@ class SVGP_map():
             mean_module = ConstantMean(constant_prior=NormalPrior(self.prior_mean, self.prior_vari)),
             covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5, )))
         self.likelihood = GaussianLikelihood()
-        
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.model.model, self.mb_size, combine_terms=True)
         self.likelihood.to(self.device).float()
         self.model.to(self.device).float()

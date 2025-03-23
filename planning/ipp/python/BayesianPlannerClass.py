@@ -279,12 +279,13 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
         
             # Freeze a copy of current model for planning, to let real model keep training
             with self.gp.mutex:
-                    torch.save({'model' : self.gp.model.state_dict()}, "GP_env.pickle")
+                    self.gp.save("GP_env.pickle")
+                    #torch.save({'model' : self.gp.model.state_dict()}, "GP_env.pickle")
                     print("Froze GP for planning")
                     
             with self.gp_env_lock:
-                cp = torch.load("GP_env.pickle")
-                self.frozen_gp.model.load_state_dict(cp['model'])
+                #cp = torch.load("GP_env.pickle")
+                self.frozen_gp.load("GP_env.pickle")
                 nbr_beam_samples = min(self.gp.real_beams.shape[0]-1, 10000)
                 idx = np.random.choice(self.gp.real_beams.shape[0]-1, nbr_beam_samples, replace=False)
                 beams = self.gp.real_beams[idx,:]
