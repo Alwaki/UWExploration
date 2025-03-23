@@ -299,7 +299,7 @@ class BOPlanner(PlannerTemplateClass.PlannerTemplate):
                                 horizon_distance=self.horizon_distance, border_margin=self.border_margin)
             
             t1 = time.time()
-            while self.finish_imminent == False or time.time() - t1 < 75:
+            while self.finish_imminent == False:
                 MCTS.iterate()
             
             rush_order_activated = False
